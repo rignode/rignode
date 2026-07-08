@@ -1,0 +1,479 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: RIGNODE — Decentralized compute exchange API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: nodes
+    description: Node operator registration and management
+  - name: jobs
+    description: Inference job lifecycle
+  - name: earnings
+    description: Payout and earnings history
+  - name: stats
+    description: Network-wide statistics and profitability
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /nodes:
+    get:
+      operationId: listNodes
+      tags: [nodes]
+      summary: List all registered nodes
+      responses:
+        "200":
+          description: List of nodes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Node"
+    post:
+      operationId: registerNode
+      tags: [nodes]
+      summary: Register a new node
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NodeInput"
+      responses:
+        "201":
+          description: Node registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Node"
+        "400":
+          description: Invalid input
+
+  /nodes/{id}:
+    get:
+      operationId: getNode
+      tags: [nodes]
+      summary: Get a specific node
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Node details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Node"
+        "404":
+          description: Node not found
+    patch:
+      operationId: updateNode
+      tags: [nodes]
+      summary: Update node status or settings
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NodeUpdate"
+      responses:
+        "200":
+          description: Updated node
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Node"
+        "404":
+          description: Node not found
+
+  /nodes/{id}/jobs:
+    get:
+      operationId: listNodeJobs
+      tags: [nodes]
+      summary: List jobs assigned to a specific node
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of jobs for this node
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Job"
+
+  /nodes/{id}/earnings:
+    get:
+      operationId: listNodeEarnings
+      tags: [earnings]
+      summary: Earnings history for a specific node
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Earnings records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EarningRecord"
+
+  /jobs:
+    get:
+      operationId: listJobs
+      tags: [jobs]
+      summary: List all jobs
+      responses:
+        "200":
+          description: List of jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Job"
+    post:
+      operationId: submitJob
+      tags: [jobs]
+      summary: Submit a new inference job
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JobInput"
+      responses:
+        "201":
+          description: Job submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "400":
+          description: Invalid input
+
+  /jobs/{id}:
+    get:
+      operationId: getJob
+      tags: [jobs]
+      summary: Get a specific job
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Job details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "404":
+          description: Job not found
+
+  /stats/network:
+    get:
+      operationId: getNetworkStats
+      tags: [stats]
+      summary: Get network-wide statistics
+      responses:
+        "200":
+          description: Network stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NetworkStats"
+
+  /stats/tokens:
+    get:
+      operationId: getTokenStats
+      tags: [stats]
+      summary: Get real-time token usage statistics broken down by model
+      responses:
+        "200":
+          description: Token usage stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenStats"
+
+  /stats/profitability:
+    get:
+      operationId: getProfitability
+      tags: [stats]
+      summary: Calculate estimated node profitability
+      parameters:
+        - name: gpuModel
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: powerWatts
+          in: query
+          required: false
+          schema:
+            type: number
+        - name: electricityRate
+          in: query
+          required: false
+          schema:
+            type: number
+        - name: utilizationPct
+          in: query
+          required: false
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Profitability estimate
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfitabilityEstimate"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    Node:
+      type: object
+      required: [id, walletAddress, gpuModel, vram, status, region, trustScore, tokensPerSec, totalEarningsUsdc, pendingPayoutUsdc, createdAt]
+      properties:
+        id:
+          type: integer
+        walletAddress:
+          type: string
+        gpuModel:
+          type: string
+        vram:
+          type: integer
+        status:
+          type: string
+          enum: [online, offline, busy, suspended]
+        region:
+          type: string
+        trustScore:
+          type: number
+        tokensPerSec:
+          type: number
+        totalEarningsUsdc:
+          type: number
+        pendingPayoutUsdc:
+          type: number
+        jobsCompleted:
+          type: integer
+        jobsFailed:
+          type: integer
+        createdAt:
+          type: string
+        lastHeartbeat:
+          type: ["string", "null"]
+
+    NodeInput:
+      type: object
+      required: [walletAddress, gpuModel, vram, region]
+      properties:
+        walletAddress:
+          type: string
+          minLength: 32
+        gpuModel:
+          type: string
+          minLength: 2
+        vram:
+          type: integer
+          minimum: 4
+        region:
+          type: string
+
+    NodeUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [online, offline, busy, suspended]
+        tokensPerSec:
+          type: number
+        lastHeartbeat:
+          type: string
+
+    Job:
+      type: object
+      required: [id, status, model, inputTokens, outputTokens, earningUsdc, createdAt]
+      properties:
+        id:
+          type: integer
+        nodeId:
+          type: ["integer", "null"]
+        status:
+          type: string
+          enum: [pending, assigned, running, completed, failed, disputed]
+        model:
+          type: string
+        inputTokens:
+          type: integer
+        outputTokens:
+          type: integer
+        earningUsdc:
+          type: number
+        txSignature:
+          type: ["string", "null"]
+        durationMs:
+          type: ["integer", "null"]
+        verified:
+          type: boolean
+        clientAddress:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        completedAt:
+          type: ["string", "null"]
+
+    JobInput:
+      type: object
+      required: [model, prompt]
+      properties:
+        model:
+          type: string
+        prompt:
+          type: string
+          minLength: 1
+        clientAddress:
+          type: ["string", "null"]
+
+    EarningRecord:
+      type: object
+      required: [id, nodeId, amountUsdc, batchedJobs, createdAt]
+      properties:
+        id:
+          type: integer
+        nodeId:
+          type: integer
+        amountUsdc:
+          type: number
+        txSignature:
+          type: ["string", "null"]
+        batchedJobs:
+          type: integer
+        createdAt:
+          type: string
+
+    NetworkStats:
+      type: object
+      required: [totalNodes, activeNodes, totalJobsCompleted, totalUsdcPaid, avgTrustScore, jobsPerHour, topModels]
+      properties:
+        totalNodes:
+          type: integer
+        activeNodes:
+          type: integer
+        totalJobsCompleted:
+          type: integer
+        totalUsdcPaid:
+          type: number
+        avgTrustScore:
+          type: number
+        jobsPerHour:
+          type: number
+        topModels:
+          type: array
+          items:
+            type: string
+
+    ModelTokenStats:
+      type: object
+      required: [model, inputTokens, outputTokens, jobCount, usdcPaid]
+      properties:
+        model:
+          type: string
+        inputTokens:
+          type: integer
+        outputTokens:
+          type: integer
+        jobCount:
+          type: integer
+        usdcPaid:
+          type: number
+
+    TokenStats:
+      type: object
+      required: [totalInputTokens, totalOutputTokens, totalJobs, totalUsdcPaid, byModel, updatedAt]
+      properties:
+        totalInputTokens:
+          type: integer
+        totalOutputTokens:
+          type: integer
+        totalJobs:
+          type: integer
+        totalUsdcPaid:
+          type: number
+        byModel:
+          type: array
+          items:
+            $ref: "#/components/schemas/ModelTokenStats"
+        updatedAt:
+          type: string
+
+    ProfitabilityEstimate:
+      type: object
+      required: [gpuModel, dailyEarningsUsdc, monthlyEarningsUsdc, dailyElectricityCostUsd, dailyNetUsdc, monthlyNetUsdc, breakEvenUtilizationPct]
+      properties:
+        gpuModel:
+          type: string
+        dailyEarningsUsdc:
+          type: number
+        monthlyEarningsUsdc:
+          type: number
+        dailyElectricityCostUsd:
+          type: number
+        dailyNetUsdc:
+          type: number
+        monthlyNetUsdc:
+          type: number
+        breakEvenUtilizationPct:
+          type: number
+        assumptions:
+          type: string
